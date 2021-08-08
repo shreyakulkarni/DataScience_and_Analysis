@@ -1,0 +1,256 @@
+---
+
+date: "8/8/2021"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+
+#DATA  SET: LIFEEXPECTANCE
+#install.packages("tidyverse")
+#install.packages("gridExtra")
+#install.packages("reshape2")
+#install.packages('aplpack')
+#install.packages("gbm")
+library(gbm)
+library(aplpack)
+library(tidyverse) # metapackage with lots of helpful functions
+library(gridExtra) # grid.arrange to make quick subplots
+library(reshape2)
+library(corrplot)
+library(ggplot2)
+library(randomForest)
+
+df <- read.csv('C:/Users/shrey/Desktop/git uploads/Life_Expectancy_Data.csv')
+
+summary(df)
+
+
+df <- df %>% 
+  drop_na() %>% 
+  rename('lifexp'='Life.expectancy',
+         'percexp'='percentage.expenditure',
+         'totexp'='Total.expenditure',
+         'admort'='Adult.Mortality',
+         'infmort'='infant.deaths',
+         'u5deaths'='under.five.deaths',
+         'hepb'='Hepatitis.B',
+         'HIV'='HIV.AIDS') %>% 
+  filter(!is.na(lifexp), !is.na(admort), !is.na(infmort))
+#head(df)        
+
+#clean <- df %>%
+
+for(i in 1:ncol(df)){
+    df[is.na(df[,i]), i] <- median(df[,i], na.rm = TRUE)
+  }
+
+
+df %>% 
+  group_by(Status) %>% 
+  summarize(count = n(),
+            avg_lifexp = mean(lifexp, na.rm=TRUE),
+            avg_infmort = mean(infmort, na.rm=TRUE),
+            avg_admort = mean(admort, na.rm=TRUE))
+
+
+
+df$lifexp<- na.omit(df$lifexp)
+head(df)
+
+
+
+devd <-df %>% 
+  filter(Country %in% c('Australia', 'France', 'Italy'))
+deving <- df %>% 
+  filter(Country %in% c('China', 'Nigeria', 'India'))
+
+
+# removing 2015 data, has some NA values
+devd <- devd %>% 
+  filter(Year != 2015)
+deving <- deving %>% 
+  filter(Year != 2015)
+
+
+
+devdp1 <- ggplot(devd, aes(Year, percexp))+geom_smooth(aes(color=Country), se=FALSE, show.legend=FALSE)+ facet_grid(Country~.) + theme_bw()
+
+devdp2 <- ggplot(devd, aes(Year, lifexp))+ geom_smooth(aes(color=Country), se=FALSE, show.legend=FALSE)+ facet_grid(Country~.)+ theme_bw()
+grid.arrange(devdp1, devdp2, nrow=1)
+
+
+
+devping1 <- ggplot(deving, aes(Year, percexp))+geom_smooth(aes(color=Country), se=FALSE, show.legend=FALSE)+ facet_grid(Country~.)+ theme_bw()
+
+devping2 <- ggplot(deving, aes(Year, lifexp))+ geom_smooth(aes(color=Country), se=FALSE, show.legend=FALSE)+ facet_grid(Country~.)+ theme_bw()
+grid.arrange(devping1, devping2, nrow=1)
+
+df <- na.omit(df)
+cor(df$lifexp, df$percexp)
+
+
+a <- corrplot(cor(df[,-1:-3]))
+symnum(a)
+
+is.na(df$lifexp)
+
+dd_infant <- ggplot(devd, show.legend=FALSE)+
+  geom_smooth(aes(Year, infmort),color='blue', se=FALSE)+
+  geom_smooth(aes(Year, u5deaths), color='red', se=FALSE)+
+  facet_grid(Country~.) + theme_bw()
+
+dd_infant
+
+dp_infant <- ggplot(deving, show.legend=FALSE)+
+  geom_smooth(aes(Year, infmort), color='blue', se=FALSE)+
+  geom_smooth(aes(Year, u5deaths), color='red', se=FALSE)+
+  facet_grid(Country~.) + theme_bw()
+
+dp_infant
+
+grid.arrange(dd_infant, dp_infant, nrow=1)
+
+
+
+
+cordf <- df %>%
+  drop_na() %>% 
+  select(hepb, Polio, Measles, HIV, Diphtheria)
+cormat <- cor(cordf)
+melted <- melt(cormat)
+ggplot(melted)+
+  geom_tile(aes(Var1, Var2, fill=value))
+
+
+
+df %>%
+  group_by(Year) %>% 
+  summarize(admort=mean(admort),
+            infmort=mean(infmort)) %>% 
+  ggplot()+
+  geom_smooth(aes(Year, admort), color='blue', se=FALSE)+
+  geom_smooth(aes(Year, infmort), color='red', se=FALSE)
+
+
+
+
+df %>%
+  ggplot()+
+  geom_violin(aes(x=Year, y=lifexp, group=Year, fill=Year)) +theme_classic()
+
+
+
+options(repr.plot.width = 20, repr.plot.height = 16)
+p <- ggplot(data = df, aes(x = GDP, y=lifexp))
+p1 <- p + aes(size = Population, color = Status) + geom_point(alpha = .5) +  scale_size(range = c(.1, 24), name="Population (M)") + theme_classic()
+p1
+
+#boxplot(Status~lifexp,data=df, main="Car Milage Data",
+#        xlab="Number of Cylinders", ylab="Miles Per Gallon")
+
+
+Status = ggplot(df, aes(x = Country, y = lifexp)) + geom_boxplot() 
+Status
+
+boxplot(Year~lifexp, data=df, notch=TRUE,
+        col=(c("gold","darkgreen")),
+        main="Tooth Growth", xlab="life expectancy")
+
+
+bagplot(df$Schooling,df$lifexp, xlab="GDP", ylab="Life Expectancy", show.outlier = TRUE, 
+        main="GDP vs Life Expectancy")
+
+
+
+
+# Replacing na values with median value
+for(i in 1:ncol(df)){
+  df[is.na(df[,i]), i] <- median(df[,i], na.rm = TRUE)
+}
+
+df$Country.f <- factor(df$Country)
+is.factor(df$Country.f)
+df$Country <- NULL
+
+df$Status <- factor(df$Status)
+is.factor(df$Status)
+
+
+df_developed = df[which(df$Status == 'Developed'), ]
+df_developing = df[which(df$Status == 'Developing'), ]
+
+df_developed$Status <- NULL
+df_developing$Status <- NULL
+
+df_developed$Country.f <- NULL
+df_developing$Country.f <- NULL
+
+## Correlation plots and the difference between developed and developing countries.
+
+library(corrplot)
+correlations_developed <- cor(df_developed,method="pearson")
+corrplot(correlations_developed, number.cex = .6, method = "circle", type = "full", tl.cex=0.8,tl.col = "blue")
+
+
+correlations_developing <- cor(df_developing,method="pearson")
+corrplot(correlations_developing, number.cex = .6, method = "circle", type = "full", tl.cex=0.8,tl.col = "blue")
+
+
+## Divide the code into training and testing dataset for model evaluation
+## 75% of the sample size
+df$Country.f <- NULL
+smp_size <- floor(0.75 * nrow(df))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(df)), size = smp_size)
+
+train <- df[train_ind, ]
+test <- df[-train_ind, ]
+
+y <- test$lifexp
+test$lifexp <- NULL
+
+
+## Set seed for reproducing the results
+set.seed(123)
+
+
+model_rf <- randomForest(formula = train$lifexp ~ ., data = train, ntree = 800)
+model_rf
+
+pred_rf <- predict(model_rf, test)
+pred_rf
+
+rss_rf <- sum((pred_rf - y) ^ 2)  
+tss_rf <- sum((y - mean(y)) ^ 2) 
+rsq_rf <- 1 - rss_rf/tss_rf
+rsq_rf
+
+
+## Gradient Boosting
+
+model_gbm <- gbm(formula = train$lifexp ~ .,data = train, n.trees = 1200)  
+
+pred_gbm <- predict(model_gbm, test)
+pred_gbm
+
+rss_gbm <- sum((pred_gbm - y) ^ 2)
+tss_gbm <- sum((y - mean(y)) ^ 2)
+rsq_gbm <- 1 - rss_gbm/tss_gbm
+rsq_gbm
+
+```
+
+

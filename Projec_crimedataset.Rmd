@@ -1,0 +1,151 @@
+---
+date: "9/30/2020"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r libraries}
+#install.packages("pgirmess")
+#install.packages("dplyer")
+library(readr)
+library(readxl)
+library(ggplot2)
+library(lattice)
+library(moments)
+library(tidyr)
+library(caret)
+library(corrplot)
+library(reshape2)
+```
+
+```{r Reading Data}
+df_crime<-  read.csv("E:/HU/506/crimedata.csv", header = TRUE)
+head(df_crime)
+colnames(df_crime)
+```
+
+
+```{r Dropping Columns}
+df_crime_updated <- subset(df_crime, select = -c(LemasSwornFT, LemasSwFTPerPop, LemasSwFTFieldOps, LemasSwFTFieldPerPop,
+                                                 LemasTotalReq, LemasTotReqPerPop, PolicReqPerOffic, PolicPerPop,
+                                                 RacialMatchCommPol, PctPolicWhite, PctPolicBlack, PctPolicHisp, PctPolicAsian,
+                                                 PctPolicMinor, OfficAssgnDrugUnits, NumKindsDrugsSeiz, PolicAveOTWorked,
+                                                 PolicOperBudg, LemasPctPolicOnPatr, LemasGangUnitDeploy, LemasPctOfficDrugUn,
+                                                 PolicBudgPerPop, PolicBudgPerPop, PolicCars, OtherPerCap, rapes, rapesPerPop, robberies, robbbPerPop,
+                                                 assaults, assaultPerPop, burglaries, burglPerPop, larcenies,
+                                                 larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop,
+                                                  nonViolPerPop))
+
+colnames(df_crime_updated)
+nrow(df_crime_updated)
+                                                 
+```
+
+
+
+```{r oMMITING na}
+
+# Code for columns with NA values and printint the columns which have NA values.
+df_crime_updated[df_crime_updated == '?'] <- NA
+
+colnames(df_crime_updated)[!complete.cases(t(df_crime_updated))]
+
+df_crime_updated<- na.omit(df_crime_updated)
+
+#a<-df_crime_updated[colSums(!is.na(df_crime_updated)) > 0]
+#a
+
+nrow(df_crime_updated)
+
+```
+
+```{r Preprocessing}
+
+
+b1<-barplot(table(df_crime_updated$state), main = "States", xlab = "US states")
+b1
+
+# Convert the columns with categorical values to factor.
+df_crime_updated$state <- factor(df_crime_updated$state)
+#df_crime_updated$Ecommunityname <- factor(df_crime_updated$Ecommunityname)
+df_crime_updated$countyCode <- factor(df_crime_updated$countyCode)
+df_crime_updated$communityCode <- factor(df_crime_updated$communityCode)
+
+
+# Convert the columns to numeric to run the correlation scores.
+#df_crime_updated_new <- sapply(df_crime_updated, as.numeric)
+#head(df_crime_updated_new)
+df_crime_updated_new <- na.omit(df_crime_updated)
+
+# Should have the same number of rows as before but ? replaced with Nan values.
+nrow(df_crime_updated)
+nrow(df_crime_updated_new)
+
+
+# Code for printing the columns of missing values
+head(df_crime_updated_new, 10)
+head(df_crime_updated, 10)
+
+
+
+#Barplots
+
+#This grapgh helps us visualize the crimerate in different states in Unites States. We have plotted a  barplot on the clean data.
+
+barplot(table(df_crime_updated$state), main = "States", xlab = "US states" )
+
+```
+
+
+```{r Data Visualizations}
+
+#df_crime_updated_new<- na.omit(df_crime_updated_new)
+head(df_crime_updated_new,10)
+
+
+# Code for columns with NA values and printint the columns which have NA values.
+
+plot(df_crime_updated$racepctblack, df_crime_updated$ViolentCrimesPerPop, title("Violent Crimes vs Median Income"))
+
+plot(df_crime_updated$medIncome, df_crime_updated$ViolentCrimesPerPop, title("Violent Crimes vs Median Income"))
+
+plot(df_crime_updated$agePct12t29, df_crime_updated$ViolentCrimesPerPop, title("Violent Crimes vs Age Percentage 12-29"))
+
+plot(df_crime_updated$racePctWhite, df_crime_updated$ViolentCrimesPerPop, title("Violent Crimes vs % of Population that is White"))
+
+plot(df_crime_updated$racepctblack, df_crime_updated$ViolentCrimesPerPop, title("Violent Crimes vs % of Population that is Black"))
+
+plot(df_crime_updated$pctUrban, df_crime_updated$ViolentCrimesPerPop, title("Violent Crimes vs % of Population that is Black"))
+
+
+qplot(ViolentCrimesPerPop, medIncome, data = df_crime_updated )
+qplot(ViolentCrimesPerPop, state, data = df_crime_updated )
+qplot(ViolentCrimesPerPop, PctUnemployed, data = df_crime_updated )
+
+```
+
+
+#Correlation plots can be used to quickly find insights. It is used to investigate the dependency between multiple variables at the same time and to highlight the most correlated variables in a data table. In this visual, correlation coefficients are colored according to the value. to understand the relationship between the variables. this helps us understand which variables to be used in our model to inrease the accuracy. 
+
+
+```{r Correlation Plots}
+#Exclude Date column because not numeric
+#cor_matrix=melt(df_crime_updated)
+#cor_matrix=cor(cor_matrix)
+#Convert data to long format
+#cor_matrix=melt(cor_matrix)
+#Create correlation heat map plot to investigate correlation
+#qplot(data = cor_matrix, x=Var1, y=Var2, fill=value,geom="Correlation Plot")+scale_fill_gradient2(limits=c(-1, 1))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+# We can use the Corelation scored for features which have a corelation score on greater than .70. This means that the information contained between the two features is 70% the same. Based on this plot, we can further decide which feature we do not want to use to tune our future prediction models.
+#df_crime_updated_new_melt = melt(df_crime_updated_new)
+#high_corr = findCorrelation(cor_matrix1, cutoff=0.70)
+#high_corr = sort(high_corr)
+#reduced_Data = df_crime_updated[,-c(high_corr)]
+```
+
+
